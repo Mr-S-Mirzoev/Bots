@@ -1,6 +1,7 @@
 import requests
 from time import sleep
 import random
+import json
 
 nouns = ("puppy", "car", "rabbit", "girl", "monkey")
 verbs = ("runs", "hits", "jumps", "drives", "barfs") 
@@ -18,6 +19,7 @@ class TelegramBot(Bot):
     def __init__ (self, token):
         self.token = token
         self.url = "https://api.telegram.org/bot{}/".format(self.token)
+        self.nmessages = 0
     
     def get_updates_json(self, request):  
         response = requests.get(request + 'getUpdates')
@@ -26,9 +28,11 @@ class TelegramBot(Bot):
     def last_update(self, data):  
         results = data['result']
         total_updates = len(results) - 1
-        for message in results:
-            print(message)
-        print('\n\n')
+        if total_updates != self.nmessages:
+            self.nmessages = total_updates
+            for message in results:
+                print(json.dumps(message, indent=4, sort_keys=True, ensure_ascii=False))
+            print('\n\n')
         return results[total_updates]
 
     def get_chat_id(self, update):  
@@ -39,7 +43,7 @@ class TelegramBot(Bot):
         params = {'chat_id': chat, 'text': text}
         response = requests.post(self.url + 'sendMessage', data=params)
         return response
-    
+
     def send_message_to_last_chat(self, text):
         last_chat_id = self.get_chat_id(self.last_update(self.get_updates_json(self.url)))
         self.send_message(last_chat_id, text)
