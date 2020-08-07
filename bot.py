@@ -39,14 +39,17 @@ class TelegramBot(Bot):
         params = {'chat_id': chat, 'text': text}
         response = requests.post(self.url + 'sendMessage', data=params)
         return response
+    
+    def send_message_to_last_chat(self, text):
+        last_chat_id = self.get_chat_id(self.last_update(self.get_updates_json(self.url)))
+        self.send_message(last_chat_id, text)
 
 def main():
     t_bot = TelegramBot("1180087406:AAGv9j6GOyRdVvR1WnKXNn6Z8Z019wVqx2E")
     update_id = t_bot.last_update(t_bot.get_updates_json(t_bot.url))['update_id']
     while True:
         if update_id == t_bot.last_update(t_bot.get_updates_json(t_bot.url))['update_id']:
-            last_chat_id = t_bot.get_chat_id(t_bot.last_update(t_bot.get_updates_json(t_bot.url)))
-            t_bot.send_message(last_chat_id, random_simple_sentence())
+            t_bot.send_message_to_last_chat(random_simple_sentence())
             update_id += 1
         sleep(1)       
 
