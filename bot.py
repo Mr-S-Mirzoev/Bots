@@ -8,15 +8,7 @@ import os
 import urllib
 #from datetime import datetime
 from security.token import UserToken
-
-nouns = ("puppy", "car", "rabbit", "girl", "monkey")
-verbs = ("runs", "hits", "jumps", "drives", "barfs") 
-adv = ("crazily.", "dutifully.", "foolishly.", "merrily.", "occasionally.")
-adj = ("adorable", "clueless", "dirty", "odd", "stupid")
-l = [nouns,verbs,adj,adv]
-
-def random_simple_sentence():
-    return (' '.join([random.choice(i) for i in l])).capitalize()
+from message import Message
 
 class Bot():
     def send_message(self, text, chat_id):
@@ -97,12 +89,13 @@ class TelegramBot(Bot):
             if self.porn_worker.check_if_is_category(phrase):
                 options.append(phrase)
         return options
-
+        
+'''
     def get_all_recent_text(self, updates):
         chats = self.divide_by_chat_id(updates)
         texts = dict()
         for chat_id, chat in chats.items():
-            s = str()
+            lst = list()
             for message in chat:
                 try:
                     #left here
@@ -114,10 +107,10 @@ class TelegramBot(Bot):
                         ogg_file_path = self.download_audio_file(chat_id, file_id)
                         mp3_file_path = self.audio_worker.ogg_to_mp3(ogg_file_path)
                         text = self.audio_worker.get_text(mp3_file_path)
-                    s += text + '\n'
+                    lst.append(text.strip())
                 except Exception as e:
                     print(e)
-            texts[chat_id] = s
+            texts[chat_id] = ' '.join(lst)
         return texts
 
     def reply_to_all(self, updates):
@@ -130,9 +123,17 @@ class TelegramBot(Bot):
         for chat_id, text in text_updates.items():
             try:
                 self.send_message(text, chat_id)
-                self.download_audio_file()
             except Exception as e:
                 print("Exception: {}".format(e))
+'''
+    
+    def work_updates(self, updates):
+        chats = self.divide_by_chat_id(updates)
+        for chat_id, chat in chats.items():
+            for message in chat:
+                msg = Message(self, message, chat_id)
+                msg.reply()
+        return texts
 
     def send_message(self, text, chat_id):
         url = self.url + "sendMessage?text={}&chat_id={}".format(text, chat_id)
