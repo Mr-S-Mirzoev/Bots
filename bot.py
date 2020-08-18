@@ -64,13 +64,6 @@ class TelegramBot(Bot):
             chats[chat_id].append(update)
         return chats
 
-    def download_audio_file(self, chat_id, file_id):
-        js = self.get_json_from_url("https://api.telegram.org/bot{}/getFile?file_id={}".format(self.token, file_id))
-        file_path = js["result"]["file_path"]
-        source = os.path.join('./files/{}'.format(chat_id), file_path)
-        urllib.request.urlretrieve("https://api.telegram.org/file/bot{}/{}".format(self.token, file_path), source)
-        return source
-
     def parse_and_lookup(self, text):
         words = text.split()
         options = list()
@@ -89,51 +82,14 @@ class TelegramBot(Bot):
             if self.porn_worker.check_if_is_category(phrase):
                 options.append(phrase)
         return options
-        
-'''
-    def get_all_recent_text(self, updates):
-        chats = self.divide_by_chat_id(updates)
-        texts = dict()
-        for chat_id, chat in chats.items():
-            lst = list()
-            for message in chat:
-                try:
-                    #left here
-                    try:
-                        text = message["message"]["text"]
-                    except KeyError:
-                        self.audio_worker.prepare_dir(chat_id)
-                        file_id = message["message"]["voice"]["file_id"]
-                        ogg_file_path = self.download_audio_file(chat_id, file_id)
-                        mp3_file_path = self.audio_worker.ogg_to_mp3(ogg_file_path)
-                        text = self.audio_worker.get_text(mp3_file_path)
-                    lst.append(text.strip())
-                except Exception as e:
-                    print(e)
-            texts[chat_id] = ' '.join(lst)
-        return texts
 
-    def reply_to_all(self, updates):
-        text_updates = self.get_all_recent_text(updates)
-        for update in updates["result"]:
-            uid = update["message"]["from"]["id"]
-            ut = UserToken(uid)
-            token = ut.get_token()
-            print(uid, token)
-        for chat_id, text in text_updates.items():
-            try:
-                self.send_message(text, chat_id)
-            except Exception as e:
-                print("Exception: {}".format(e))
-'''
-    
     def work_updates(self, updates):
         chats = self.divide_by_chat_id(updates)
         for chat_id, chat in chats.items():
             for message in chat:
-                msg = Message(self, message, chat_id)
-                msg.reply()
-        return texts
+                msg = Message(message["message"], chat_id, self.token)
+                for reply in msg.reply():
+                    self.send_message(reply, chat_id)
 
     def send_message(self, text, chat_id):
         url = self.url + "sendMessage?text={}&chat_id={}".format(text, chat_id)
@@ -148,7 +104,7 @@ def TelegramBotWorker():
         updates = t_bot.get_updates(last_update_id)
         if len(updates["result"]) > 0:
             last_update_id = t_bot.get_last_update_id(updates) + 1
-            t_bot.reply_to_all(updates)
+            t_bot.work_updates(updates)
         sleep(0.5)
 
 def main():
