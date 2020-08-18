@@ -3,6 +3,10 @@ from time import sleep
 import random
 import json
 import porn_worker
+import audio_worker
+import os
+import urllib
+#from datetime import datetime
 from security.token import UserToken
 
 nouns = ("puppy", "car", "rabbit", "girl", "monkey")
@@ -26,6 +30,8 @@ class TelegramBot(Bot):
         self.flag = dict()
         self.awaiting_reply_flag = dict()
         self.user_preferences = dict()
+        self.porn_worker = porn_worker.PornWorker()
+        self.audio_worker = audio_worker.AudioWorker()
 
     def get_url(self, url):
         response = requests.get(url)
@@ -66,6 +72,32 @@ class TelegramBot(Bot):
             chats[chat_id].append(update)
         return chats
 
+    def download_audio_file(self, chat_id, file_id):
+        js = self.get_json_from_url("https://api.telegram.org/bot{}/getFile?file_id={}".format(self.token, file_id))
+        file_path = js["result"]["file_path"]
+        source = os.path.join('./files/{}'.format(chat_id), file_path)
+        urllib.request.urlretrieve("https://api.telegram.org/file/bot{}/{}".format(self.token, file_path), source)
+        return source
+
+    def parse_and_lookup(self, text):
+        words = text.split()
+        options = list()
+        for phrase in words:
+            #print(phrase)
+            if self.porn_worker.check_if_is_category(phrase):
+                options.append(phrase)
+        for i in range(len(words) - 1):
+            phrase = words[i].lower() + ' ' + words[i + 1].lower()
+            #print(phrase)
+            if self.porn_worker.check_if_is_category(phrase):
+                options.append(phrase)
+        for i in range(len(words) - 2):
+            phrase = words[i].lower() + ' ' + words[i + 1].lower() + ' ' + words[i + 2].lower()
+            #print(phrase)
+            if self.porn_worker.check_if_is_category(phrase):
+                options.append(phrase)
+        return options
+
     def get_all_recent_text(self, updates):
         chats = self.divide_by_chat_id(updates)
         texts = dict()
@@ -73,69 +105,13 @@ class TelegramBot(Bot):
             s = str()
             for message in chat:
                 try:
+                    #left here
                     text = message["message"]["text"]
-                    if text.strip() == "/selectpreferences":
-                        if chat_id in self.flag.keys():
-                            self.flag[chat_id][0] = True
-                        else:
-                            self.flag[chat_id] = [True, False]
-                    elif text.strip() == "/choosedatabases":
-                        if chat_id in self.flag.keys():
-                            self.flag[chat_id][1] = True
-                        else:
-                            self.flag[chat_id] = [False, True]
-                    else:
-                        s += text + '\n'
-                except:
-                    pass
+                    s += text + '\n'
+                except Exception as e:
+                    print(e)
             texts[chat_id] = s
-            #self.work_buttons(chat_id, chat)
         return texts
-    """
-    def work_buttons(self, chat_id, text):
-        try:
-            cur_flag = self.flag[chat_id]
-            if cur_flag:
-                self.awaiting_reply_flag[chat_id] = [False, False]
-                if cur_flag[0]:
-                    self.send_message("Choose up to five categories each in new line.", chat_id)
-                    self.awaiting_reply_flag[chat_id][0] = True
-                if cur_flag[1]:
-                    self.pornsites = ["xnxx.com", "porn.com", "its.porn", "xvideos.com"]
-                    databases = str()
-                    for index, pornsite in enumerate(self.pornsites):
-                        databases += '\n{}. {}'.format(index + 1, pornsite)
-                    #databases = '\n1. xnxx.com\n2. porn.com\n3. its.porn\n4. xvideos.com'
-                    msg_text = "Choose up to five databases by their number, separating them by \',\'.{}".format(databases)
-                    self.send_message(msg_text, chat_id)
-                    self.awaiting_reply_flag[chat_id][1] = True
-                self.flag[chat_id] = (False, False)
-            cur_flag = self.awaiting_reply_flag[chat_id]
-            if cur_flag:
-                pw = porn_worker.PornWorker()
-                if cur_flag[0]:
-                    numbers = set()
-                    for str_val in text:
-                        try:
-                            num = int(str_val)
-                            if num <= len(self.pornsites) and num >= 0:
-                                numbers.add(num)
-                        except ValueError:
-                            categs = str_val.split('\n')
-                            for category in categs:
-                                if pw.check_if_is_category(category):
-                                    if not self.user_preferences[chat_id]:
-                                        self.user_preferences[chat_id] = list()
-                                    self.user_preferences[chat_id].append(category)
-                            
-                if cur_flag[1]:
-                    databases = '\n1. xnxx.com\n2. porn.com\n3. its.porn\n4. xvideos.com'
-                    msg_text = "Choose up to five databases by their number, separating them by \',\'.{}".format(databases)
-                    self.send_message(msg_text, chat_id)
-                self.awaiting_reply_flag[chat_id] = (False, False)
-        except KeyError:
-            pass
-        """
 
     def reply_to_all(self, updates):
         text_updates = self.get_all_recent_text(updates)

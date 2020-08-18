@@ -13,7 +13,7 @@ class PornWorker:
 
     def load_categories (self):
         with open("./metainfo/categories.txt", 'r') as f:
-            self.categories = set(f.readlines())
+            self.categories = set(x.strip() for x in f.readlines())
     
     def check_if_is_category(self, value):
         if not self.categories:
