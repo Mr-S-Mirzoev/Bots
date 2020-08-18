@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 from audio_worker import AudioWorker
 import requests, json, urllib, os
-
+from state_table import Action
 
 class Attachment(ABC):
     def __init__(self, chat_id):
@@ -37,10 +37,14 @@ class Audio(Attachment):
         return source
 
     def __str__(self):
-        self.aw.prepare_dir(self.chat_id)
-        ogg_file_path = self.download_audio_file(self.chat_id, self.file_id)
-        mp3_file_path = self.aw.ogg_to_mp3(ogg_file_path)
-        return self.aw.get_text(mp3_file_path)
+        try:
+            self.aw.prepare_dir(self.chat_id)
+            ogg_file_path = self.download_audio_file(self.chat_id, self.file_id)
+            mp3_file_path = self.aw.ogg_to_mp3(ogg_file_path)
+            text = self.aw.get_text(mp3_file_path)
+            return text
+        except:
+            return "Error during parsing voice message"
 
 class Text(Attachment):
     def __init__(self, chat_id, text):
@@ -51,18 +55,19 @@ class Text(Attachment):
         return self.value
 
 class Message:
-    def __init__(self, message: dict, chat_id, token):
+    def __init__(self, message: dict, chat_id, token, statetable):
         self.attachments = list()
         self.chat_id = chat_id
+        self.statetable = statetable
         keys = message.keys()
         if 'text' in keys:
             self.attachments.append(Text(chat_id, message['text']))
         elif 'voice' in keys:
             self.attachments.append(Audio(chat_id, message['voice']['file_id'], token))
-        self.reply()
 
     def reply(self):
         for attachment in self.attachments:
             txt_val = str(attachment)
-            reply = "Replying to:" + txt_val
+            act = Action(self.statetable, self.chat_id)
+            reply = act.act(txt_val)
             yield reply

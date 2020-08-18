@@ -1,5 +1,7 @@
 import requests
 
+databases = ['www.its.porn', 'www.xnxx.com']
+
 class PornWorker:
     def __init__ (self):
         self.categories = None

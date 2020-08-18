@@ -9,6 +9,7 @@ import urllib
 #from datetime import datetime
 from security.token import UserToken
 from message import Message
+from state_table import StateTable
 
 class Bot():
     def send_message(self, text, chat_id):
@@ -24,6 +25,7 @@ class TelegramBot(Bot):
         self.user_preferences = dict()
         self.porn_worker = porn_worker.PornWorker()
         self.audio_worker = audio_worker.AudioWorker()
+        self.statetable = StateTable()
 
     def get_url(self, url):
         response = requests.get(url)
@@ -87,7 +89,7 @@ class TelegramBot(Bot):
         chats = self.divide_by_chat_id(updates)
         for chat_id, chat in chats.items():
             for message in chat:
-                msg = Message(message["message"], chat_id, self.token)
+                msg = Message(message["message"], chat_id, self.token, self.statetable)
                 for reply in msg.reply():
                     self.send_message(reply, chat_id)
 

@@ -33,10 +33,10 @@ class AudioWorker:
     instance = None
     def __init__ (self):
         if not AudioWorker.instance:
-            print("Not yet created, creating")
+            print("AW: Not yet created, creating")
             AudioWorker.instance = AudioWorker.__AW()
         else:
-            print("Already created, using previous")
+            print("AW: Already created, using previous")
 
     def prepare_dir(self, chat_id):
         AudioWorker.instance.prepare_dir(chat_id)
