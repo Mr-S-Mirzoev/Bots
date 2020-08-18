@@ -23,7 +23,7 @@ class PornWorker:
         return value.strip() in self.categories
 
     def check_if_has_categories(self, text: str):
-        lst = text.split()
+        lst = [x.lower() for x in text.split()]
         cats = list()
         length = len(lst)
         for i in range(length):
