@@ -106,7 +106,14 @@ class TelegramBot(Bot):
             for message in chat:
                 try:
                     #left here
-                    text = message["message"]["text"]
+                    try:
+                        text = message["message"]["text"]
+                    except KeyError:
+                        self.audio_worker.prepare_dir(chat_id)
+                        file_id = message["message"]["voice"]["file_id"]
+                        ogg_file_path = self.download_audio_file(chat_id, file_id)
+                        mp3_file_path = self.audio_worker.ogg_to_mp3(ogg_file_path)
+                        text = self.audio_worker.get_text(mp3_file_path)
                     s += text + '\n'
                 except Exception as e:
                     print(e)
@@ -123,7 +130,7 @@ class TelegramBot(Bot):
         for chat_id, text in text_updates.items():
             try:
                 self.send_message(text, chat_id)
-                
+                self.download_audio_file()
             except Exception as e:
                 print("Exception: {}".format(e))
 
