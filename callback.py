@@ -3,6 +3,15 @@ from abc import ABC, abstractmethod
 from porn_worker import PornWorker, databases, get_database_by_name
 from random import choice
 import os, requests
+from security.token import UserToken
+
+def prepare_user_dir(chat_id):
+    #here chat_id is interpreted as user_id (may be wrong)
+    chat_secure_id = UserToken(chat_id).get_token()
+    if not os.path.isdir('./user-data'):
+        os.mkdir('./user-data')
+    if not os.path.isdir('./user-data/{}'.format(chat_secure_id)):
+        os.mkdir('./user-data/{}'.format(chat_secure_id))
 
 class Callback:
     @abstractmethod
@@ -40,23 +49,26 @@ class CommandList:
 
 class NormalCallback(Callback):
     def prepare_dir(self, chat_id):
-        if not os.path.isdir('./files'):
-            os.mkdir('./files')
-        if not os.path.isdir('./files/{}'.format(chat_id)):
-            os.mkdir('./files/{}'.format(chat_id))
-        if not os.path.isdir('./files/{}/photo'.format(chat_id)):
-            os.mkdir('./files/{}/photo'.format(chat_id))
+        #here chat_id is interpreted as user_id (may be wrong)
+        chat_secure_id = UserToken(chat_id).get_token()
+        if not os.path.isdir('./user-data'):
+            os.mkdir('./user-data')
+        if not os.path.isdir('./user-data/{}'.format(chat_secure_id)):
+            os.mkdir('./user-data/{}'.format(chat_secure_id))
+        if not os.path.isdir('./user-data/{}/photo'.format(chat_secure_id)):
+            os.mkdir('./user-data/{}/photo'.format(chat_secure_id))
 
     def download_photo(self, chat_id, link: str):
         file_path = link[link.rfind('/') + 1:]
-        print(file_path, link)
-        source = os.path.join('./files/{}/photo'.format(chat_id), file_path)
+
+        #here chat_id is interpreted as user_id (may be wrong)
+        chat_secure_id = UserToken(chat_id).get_token()
+        source = os.path.join('./user-data/{}/photo'.format(chat_secure_id), file_path)
         response = requests.get(link)
 
         file = open(source, "wb")
         file.write(response.content)
         file.close()
-        print("Downloaded")
         return source
 
     def __call__(self, text: str, state_tbl: StateTable, chat_id):
@@ -74,12 +86,44 @@ class NormalCallback(Callback):
         elif text == '/randomvideo':
             state_tbl.states[chat_id] = State.WAITING_FOR_RATING
             state_tbl.buffer[chat_id] = databases
-            user_db = ['https://www.its.porn/'] #change to get dbs from buffer
+            secure_chat_id = UserToken(chat_id).get_token()
+            try:
+                with open("./user-data/{}/prefered-databases.txt".format(secure_chat_id), 'r') as f:
+                    user_db = list(x.strip() for x in f.readlines())
+            except:
+                user_db = ['https://www.its.porn/'] # default
+            #user_db = ['https://www.its.porn/'] #TODO: change to get dbs from buffer
             db = get_database_by_name(choice(user_db))
             video = db.get_random_video()
             reply = video['title'] + '\n\nLink: ' + video['link'] + '\n\nReply with "like" or "dislike".'
             self.prepare_dir(chat_id)
             photo = self.download_photo(chat_id, video['image'])
+        elif text == '/myinfo':
+            secure_chat_id = UserToken(chat_id).get_token()
+            try:
+                with open("./user-data/{}/prefered-categories.txt".format(secure_chat_id), 'r') as f:
+                    lst = [x.strip() for x in f.readlines()]
+                    if (len(lst) > 1):
+                        reply += "Well, your preferences in categories are:\n"
+                    else:
+                        reply += "Well, your preference in categories is:\n"
+                    for category in lst:
+                        reply += category + '\n'
+            except:
+                reply += "No preferences in categories yet. Set them by /selectpreferences"
+
+            secure_chat_id = UserToken(chat_id).get_token()
+            try:
+                with open("./user-data/{}/prefered-databases.txt".format(secure_chat_id), 'r') as f:
+                    lst = [x.strip() for x in f.readlines()]
+                    if (len(lst) > 1):
+                        reply += "\nWell, your preferences in databases are:\n"
+                    else:
+                        reply += "\nWell, your preference in databases is:\n"
+                    for category in lst:
+                        reply += category + '\n'
+            except:
+                reply += "No preferences in databases yet. Set them by /choosedatabases"
         else:
             reply += "I am not ready to talk, please choose commands:\n"
             reply += "/selectpreferences to set the prefered categories\n"
@@ -143,7 +187,16 @@ class SetCategoriesCallback(Callback):
                 if number <= len(buff) and number >= 1:
                     lst.append(buff[number - 1])
             if lst:
-                reply = "Added these categories to your preferences: " + ', '.join(lst)
+                if (len(lst) > 1):
+                    reply = "Added these categories to your preferences: " + ', '.join(lst)
+                else:
+                    reply = "Added this category to your preferences: " + lst[0]
+                # assuming chat_id is user_id
+                secure_chat_id = UserToken(chat_id).get_token()
+                prepare_user_dir(chat_id)
+                with open("./user-data/{}/prefered-categories.txt".format(secure_chat_id), 'w') as f:
+                    for category in lst:
+                        f.write(category + '\n')
                 state_tbl.buffer[chat_id] = None
                 state_tbl.states[chat_id] = State.NORMAL
             else:
@@ -172,7 +225,15 @@ class DatabaseCallback(Callback):
                 if number <= len(buff) and number >= 1:
                     lst.append(buff[number - 1])
             if lst:
-                reply = "Added these categories to your preferences: " + ', '.join(lst)
+                if (len(lst) > 1):
+                    reply = "Added these databases to your preferences: " + ', '.join(lst)
+                else:
+                    reply = "Added this database to your preferences: " + lst[0]
+                secure_chat_id = UserToken(chat_id).get_token()
+                prepare_user_dir(chat_id)
+                with open("./user-data/{}/prefered-databases.txt".format(secure_chat_id), 'w') as f:
+                    for database in lst:
+                        f.write(database + '\n')
                 state_tbl.buffer[chat_id] = None
                 state_tbl.states[chat_id] = State.NORMAL
             else:

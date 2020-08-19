@@ -2,6 +2,17 @@ from abc import ABC, abstractmethod
 from audio_worker import AudioWorker
 import requests, json, urllib, os
 from callback import CallbackWorker
+from security.token import UserToken
+
+def get_url(url):
+    response = requests.get(url)
+    content = response.content.decode("utf8")
+    return content
+
+def get_json_from_url(url):
+    content = get_url(url)
+    js = json.loads(content)
+    return js
 
 class Attachment(ABC):
     def __init__(self, chat_id):
@@ -19,29 +30,28 @@ class Audio(Attachment):
         self.token = token
         self.aw = AudioWorker()
 
-    def get_url(self, url):
-        response = requests.get(url)
-        content = response.content.decode("utf8")
-        return content
-
-    def get_json_from_url(self, url):
-        content = self.get_url(url)
-        js = json.loads(content)
-        return js
-
     def download_audio_file(self, chat_id, file_id):
-        js = self.get_json_from_url("https://api.telegram.org/bot{}/getFile?file_id={}".format(self.token, file_id))
+        js = get_json_from_url("https://api.telegram.org/bot{}/getFile?file_id={}".format(self.token, file_id))
         file_path = js["result"]["file_path"]
-        source = os.path.join('./files/{}'.format(chat_id), file_path)
+
+        #here chat_id is interpreted as user_id (may be wrong)
+        chat_secure_id = UserToken(chat_id).get_token()
+        source = os.path.join('./user-data/{}'.format(chat_secure_id), file_path)
+
         urllib.request.urlretrieve("https://api.telegram.org/file/bot{}/{}".format(self.token, file_path), source)
         return source
 
     def __str__(self):
         try:
+            print(1)
             self.aw.prepare_dir(self.chat_id)
+            print(2)
             ogg_file_path = self.download_audio_file(self.chat_id, self.file_id)
+            print(3)
             mp3_file_path = self.aw.ogg_to_mp3(ogg_file_path)
+            print(4)
             text = self.aw.get_text(mp3_file_path)
+            print(5)
             return text
         except:
             return "Error during parsing voice message"

@@ -1,6 +1,7 @@
 import requests
 import speech_recognition as sr
 from pydub import AudioSegment
+from security.token import UserToken
 import os
 
 class AudioWorker:
@@ -9,12 +10,14 @@ class AudioWorker:
             self.recogniser = sr.Recognizer()
 
         def prepare_dir(self, chat_id):
-            if not os.path.isdir('./files'):
-                os.mkdir('./files')
-            if not os.path.isdir('./files/{}'.format(chat_id)):
-                os.mkdir('./files/{}'.format(chat_id))
-            if not os.path.isdir('./files/{}/voice'.format(chat_id)):
-                os.mkdir('./files/{}/voice'.format(chat_id))
+            #here chat_id is interpreted as user_id (may be wrong)
+            chat_secure_id = UserToken(chat_id).get_token()
+            if not os.path.isdir('./user-data'):
+                os.mkdir('./user-data')
+            if not os.path.isdir('./user-data/{}'.format(chat_secure_id)):
+                os.mkdir('./user-data/{}'.format(chat_secure_id))
+            if not os.path.isdir('./user-data/{}/voice'.format(chat_secure_id)):
+                os.mkdir('./user-data/{}/voice'.format(chat_secure_id))
         
         def ogg_to_mp3(self, source):
             ogg_audio = AudioSegment.from_file(source, format="ogg")
