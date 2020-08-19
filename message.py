@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 from audio_worker import AudioWorker
 import requests, json, urllib, os
-from state_table import Action
+from callback import CallbackWorker
 
 class Attachment(ABC):
     def __init__(self, chat_id):
@@ -68,6 +68,7 @@ class Message:
     def reply(self):
         for attachment in self.attachments:
             txt_val = str(attachment)
-            act = Action(self.statetable, self.chat_id)
-            reply = act.act(txt_val)
+            cw = CallbackWorker()
+            reply = cw.act(txt_val, self.statetable, self.chat_id)
+            print(self.statetable.states[self.chat_id])
             yield reply
