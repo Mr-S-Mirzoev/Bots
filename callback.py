@@ -2,6 +2,7 @@ from state_table import State, StateTable
 from abc import ABC, abstractmethod
 from porn_worker import PornWorker, databases, get_database_by_name
 from random import choice
+import os, requests
 
 class Callback:
     @abstractmethod
@@ -32,12 +33,35 @@ class CommandList:
             state = state_tbl.states[chat_id]
         try:
             return self.command_list[state].callback(text, state_tbl, chat_id)
-        except:
-            return "LOGIC ERROR, no such State available"
+        except Exception as e:
+            result = dict()
+            result["text"] = "LOGIC ERROR, no such State available or {}".format(e)
+            return result
 
 class NormalCallback(Callback):
+    def prepare_dir(self, chat_id):
+        if not os.path.isdir('./files'):
+            os.mkdir('./files')
+        if not os.path.isdir('./files/{}'.format(chat_id)):
+            os.mkdir('./files/{}'.format(chat_id))
+        if not os.path.isdir('./files/{}/photo'.format(chat_id)):
+            os.mkdir('./files/{}/photo'.format(chat_id))
+
+    def download_photo(self, chat_id, link: str):
+        file_path = link[link.rfind('/') + 1:]
+        print(file_path, link)
+        source = os.path.join('./files/{}/photo'.format(chat_id), file_path)
+        response = requests.get(link)
+
+        file = open(source, "wb")
+        file.write(response.content)
+        file.close()
+        print("Downloaded")
+        return source
+
     def __call__(self, text: str, state_tbl: StateTable, chat_id):
         reply = str()
+        photo = None
         if text == "/selectpreferences":
             state_tbl.states[chat_id] = State.WAITING_GET_CATEGORIES
             reply = "Type in categories or record them on voice message"
@@ -53,13 +77,19 @@ class NormalCallback(Callback):
             user_db = ['https://www.its.porn/'] #change to get dbs from buffer
             db = get_database_by_name(choice(user_db))
             video = db.get_random_video()
-            reply = video['title'] + '\nLink: ' + video['link'] + '\n\nReply with "like" or "dislike".'
+            reply = video['title'] + '\n\nLink: ' + video['link'] + '\n\nReply with "like" or "dislike".'
+            self.prepare_dir(chat_id)
+            photo = self.download_photo(chat_id, video['image'])
         else:
             reply += "I am not ready to talk, please choose commands:\n"
             reply += "/selectpreferences to set the prefered categories\n"
             reply += "/choosedatabases to choose websites you want to see porn from.\n"
             reply += "/randomvideo to get random video and rate it afterwards."
-        return reply
+        result = dict()
+        result["text"] = reply
+        if photo:
+            result['photo'] = photo
+        return result
 
 class RatingCallback(Callback):
     def __call__(self, text: str, state_tbl: StateTable, chat_id):
@@ -73,7 +103,9 @@ class RatingCallback(Callback):
         else:
             reply = "Unknown reply. Try with 'like' or 'dislike'"
             state_tbl.states[chat_id] = State.WAITING_FOR_RATING
-        return reply
+        result = dict()
+        result["text"] = reply
+        return result
         
 
 class GetCategoriesCallback(Callback):
@@ -89,7 +121,9 @@ class GetCategoriesCallback(Callback):
             state_tbl.states[chat_id] = State.WAITING_SET_CATEGORIES
         else:
             reply += "Found no categories in \'{}\', try to type or record them again".format(text)
-        return reply
+        result = dict()
+        result["text"] = reply
+        return result
 
 class SetCategoriesCallback(Callback):
     def __call__(self, text: str, state_tbl: StateTable, chat_id):
@@ -116,7 +150,9 @@ class SetCategoriesCallback(Callback):
                 reply = "Passed wrong numbers"
         else:
             reply = "Passed numbers in wrong format or didn't pass them at all"
-        return reply
+        result = dict()
+        result["text"] = reply
+        return result
 
 class DatabaseCallback(Callback):
     def __call__(self, text: str, state_tbl: StateTable, chat_id):
@@ -143,7 +179,9 @@ class DatabaseCallback(Callback):
                 reply = "Passed wrong numbers"
         else:
             reply = "Passed numbers in wrong format or didn't pass them at all"
-        return reply
+        result = dict()
+        result["text"] = reply
+        return result
 
 class CallbackWorker:
     class __CW:

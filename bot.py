@@ -10,6 +10,7 @@ import urllib
 from security.token import UserToken
 from message import Message
 from state_table import StateTable
+import subprocess
 
 class Bot():
     def send_message(self, text, chat_id):
@@ -91,11 +92,20 @@ class TelegramBot(Bot):
             for message in chat:
                 msg = Message(message["message"], chat_id, self.token, self.statetable)
                 for reply in msg.reply():
-                    self.send_message(reply, chat_id)
+                    if 'text' in reply.keys():
+                        self.send_message(reply['text'], chat_id)
+                    if 'photo' in reply.keys():
+                        print(reply['photo'])
+                        self.send_image(reply['photo'], chat_id)
 
     def send_message(self, text, chat_id):
         url = self.url + "sendMessage?text={}&chat_id={}".format(text, chat_id)
         self.get_url(url)
+
+    def send_image(self, imageFile, chat_id):
+        command = 'curl -s -X POST https://api.telegram.org/bot' + self.token + '/sendPhoto -F chat_id=' + str(chat_id) + " -F photo=@" + imageFile
+        subprocess.call(command.split(' '))
+        return
 
 def TelegramBotWorker():
     with open("../t_bot_token.txt","r") as f:
