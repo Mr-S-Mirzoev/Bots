@@ -100,6 +100,7 @@ class NormalCallback(Callback):
             photo = self.download_photo(chat_id, video['image'])
         elif text == '/myinfo':
             secure_chat_id = UserToken(chat_id).get_token()
+            print(chat_id, secure_chat_id)
             try:
                 with open("./user-data/{}/prefered-categories.txt".format(secure_chat_id), 'r') as f:
                     lst = [x.strip() for x in f.readlines()]
@@ -123,12 +124,13 @@ class NormalCallback(Callback):
                     for category in lst:
                         reply += category + '\n'
             except:
-                reply += "No preferences in databases yet. Set them by /choosedatabases"
+                reply += "\nNo preferences in databases yet. Set them by /choosedatabases"
         else:
             reply += "I am not ready to talk, please choose commands:\n"
             reply += "/selectpreferences to set the prefered categories\n"
             reply += "/choosedatabases to choose websites you want to see porn from.\n"
             reply += "/randomvideo to get random video and rate it afterwards."
+            reply += "/myinfo to get your information"
         result = dict()
         result["text"] = reply
         if photo:
