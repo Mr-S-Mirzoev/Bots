@@ -43,15 +43,10 @@ class Audio(Attachment):
 
     def __str__(self):
         try:
-            print(1)
             self.aw.prepare_dir(self.chat_id)
-            print(2)
             ogg_file_path = self.download_audio_file(self.chat_id, self.file_id)
-            print(3)
             mp3_file_path = self.aw.ogg_to_mp3(ogg_file_path)
-            print(4)
             text = self.aw.get_text(mp3_file_path)
-            print(5)
             return text
         except:
             return "Error during parsing voice message"
