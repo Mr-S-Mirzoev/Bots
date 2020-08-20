@@ -4,6 +4,8 @@ from porn_worker import PornWorker, databases, get_database_by_name
 from random import choice
 import os, requests
 from security.token import UserToken
+from copy import deepcopy
+from rating_worker import RateWorker
 
 def prepare_user_dir(chat_id):
     #here chat_id is interpreted as user_id (may be wrong)
@@ -85,7 +87,6 @@ class NormalCallback(Callback):
                 reply += str(num + 1) + ') ' + website + '\n'
         elif text == '/randomvideo':
             state_tbl.states[chat_id] = State.WAITING_FOR_RATING
-            state_tbl.buffer[chat_id] = databases
             secure_chat_id = UserToken(chat_id).get_token()
             try:
                 with open("./user-data/{}/prefered-databases.txt".format(secure_chat_id), 'r') as f:
@@ -98,6 +99,7 @@ class NormalCallback(Callback):
             reply = video['title'] + '\n\nLink: ' + video['link'] + '\n\nReply with "like" or "dislike".'
             self.prepare_dir(chat_id)
             photo = self.download_photo(chat_id, video['image'])
+            state_tbl.buffer[chat_id] = deepcopy(video)
         elif text == '/myinfo':
             secure_chat_id = UserToken(chat_id).get_token()
             print(chat_id, secure_chat_id)
@@ -143,8 +145,18 @@ class RatingCallback(Callback):
         reply = str()
         state_tbl.states[chat_id] = State.NORMAL
         if text == 'like':
+            state_tbl.buffer[chat_id]['rating'] = 'like'
+            rw = RateWorker()
+            rw.append(chat_id, state_tbl.buffer[chat_id])
+            rw.get_my_ratings(chat_id)
+            state_tbl.buffer[chat_id] = None
             reply = "We love to hear that you've liked our video!"
         elif text == 'dislike':
+            state_tbl.buffer[chat_id]['rating'] = 'dislike'
+            rw = RateWorker()
+            rw.append(chat_id, state_tbl.buffer[chat_id])
+            rw.get_my_ratings(chat_id)
+            state_tbl.buffer[chat_id] = None
             reply = "Oh, that's a pity. We would do better next time!"
         else:
             reply = "Unknown reply. Try with 'like' or 'dislike'"

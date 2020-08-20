@@ -35,7 +35,6 @@ class ItsPorn(Database):
             info["title"] = title[:index]
             videos.append(info)
             #print(info, end='\n\n\n')
-        
         return choice(videos)
 
 def get_database_by_name(name):
