@@ -48,6 +48,16 @@ class RateWorker:
                 writer = csv.DictWriter(csv_file, fieldnames=fieldnames)
                 writer.writerow(cpy)
 
+            fieldnames_ui = ["timestamp", "eventType", "contentId", "personId"]
+            ui_info = dict()
+            ui_info['timestamp'] = cpy['timestamp']
+            ui_info['eventType'] = cpy['rating']
+            ui_info['contentId'] = info['contentId']
+            ui_info['personId'] = chat_secure_id
+            with open('./metainfo/user_interactions.csv', 'a') as csv_file:
+                writer = csv.DictWriter(csv_file, fieldnames=fieldnames_ui)
+                writer.writerow(ui_info)
+
         def get_my_ratings(self, chat_id):
             chat_secure_id = UserToken(chat_id).get_token()
             df = pandas.read_csv('./user-data/{}/ml-data/ratings.csv'.format(chat_secure_id))

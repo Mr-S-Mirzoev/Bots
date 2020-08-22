@@ -291,14 +291,16 @@ class HybridRecommender:
 
         return recommendations_df
 
+user_id = -1479311724257856983
+
 #Top-N accuracy metrics consts
 EVAL_RANDOM_SAMPLE_NON_INTERACTED_ITEMS = 100
 
 articles_df = pd.read_csv('shared_articles_cpy.csv')
-articles_df.head(5)
+#articles_df.head(5)
 
 interactions_df = pd.read_csv('users_interactions.csv')
-interactions_df.head(10)
+#interactions_df.head(10)
 
 event_type_strength = {
    'like': 1.0,
@@ -309,30 +311,30 @@ event_type_strength = {
 interactions_df['eventStrength'] = interactions_df['eventType'].apply(lambda x: event_type_strength[x])
 
 users_interactions_count_df = interactions_df.groupby(['personId', 'contentId']).size().groupby('personId').size()
-print('# users: %d' % len(users_interactions_count_df))
+#print('# users: %d' % len(users_interactions_count_df))
 users_with_enough_interactions_df = users_interactions_count_df[users_interactions_count_df >= 5].reset_index()[['personId']]
-print('# users with at least 5 interactions: %d' % len(users_with_enough_interactions_df))
+#print('# users with at least 5 interactions: %d' % len(users_with_enough_interactions_df))
 
-print('# of interactions: %d' % len(interactions_df))
+#print('# of interactions: %d' % len(interactions_df))
 interactions_from_selected_users_df = interactions_df.merge(users_with_enough_interactions_df, 
                how = 'right',
                left_on = 'personId',
                right_on = 'personId')
-print('# of interactions from users with at least 5 interactions: %d' % len(interactions_from_selected_users_df))
+#print('# of interactions from users with at least 5 interactions: %d' % len(interactions_from_selected_users_df))
     
 interactions_full_df = interactions_from_selected_users_df \
                     .groupby(['personId', 'contentId'])['eventStrength'].sum() \
                     .apply(smooth_user_preference).reset_index()
-print('# of unique user/item interactions: %d' % len(interactions_full_df))
-interactions_full_df.head(10)
+#print('# of unique user/item interactions: %d' % len(interactions_full_df))
+#interactions_full_df.head(10)
 
 interactions_train_df, interactions_test_df = train_test_split(interactions_full_df,
                         stratify=interactions_full_df['personId'], 
                         test_size=0.20,
                         random_state=42)
 
-print('# interactions on Train set: %d' % len(interactions_train_df))
-print('# interactions on Test set: %d' % len(interactions_test_df))
+#print('# interactions on Train set: %d' % len(interactions_train_df))
+#print('# interactions on Test set: %d' % len(interactions_test_df))
 
 #Indexing by personId to speed up the searches during evaluation
 interactions_full_indexed_df = interactions_full_df.set_index('personId')
@@ -343,14 +345,14 @@ model_evaluator = ModelEvaluator()
 
 #Computes the most popular items
 item_popularity_df = interactions_full_df.groupby('contentId')['eventStrength'].sum().sort_values(ascending=False).reset_index()
-item_popularity_df.head(10)
+#item_popularity_df.head(10)
     
 popularity_model = PopularityRecommender(item_popularity_df, articles_df)
 
-print('Evaluating Popularity recommendation model...')
+#print('Evaluating Popularity recommendation model...')
 pop_global_metrics, pop_detailed_results_df = model_evaluator.evaluate_model(popularity_model)
-print('\nGlobal metrics:\n%s' % pop_global_metrics)
-pop_detailed_results_df.head(10)
+#print('\nGlobal metrics:\n%s' % pop_global_metrics)
+#pop_detailed_results_df.head(10)
 
 #Ignoring stopwords (words with no semantics) from English and Portuguese (as we have a corpus with mixed languages)
 stopwords_list = stopwords.words('english') + stopwords.words('russian')
@@ -366,70 +368,68 @@ vectorizer = TfidfVectorizer(analyzer='word',
 item_ids = articles_df['contentId'].tolist()
 tfidf_matrix = vectorizer.fit_transform(articles_df['title'] + "" + articles_df['text'])
 tfidf_feature_names = vectorizer.get_feature_names()
-tfidf_matrix
+#tfidf_matrix
 
 user_profiles = build_users_profiles()
-len(user_profiles)
+#len(user_profiles)
 
-myprofile = user_profiles[-1479311724257856983]
-print(myprofile.shape)
-pd.DataFrame(sorted(zip(tfidf_feature_names, 
-                        user_profiles[-1479311724257856983].flatten().tolist()), key=lambda x: -x[1])[:20],
-             columns=['token', 'relevance'])
+myprofile = user_profiles[user_id]
+#print(myprofile.shape)
+#pd.DataFrame(sorted(zip(tfidf_feature_names, 
+#                        user_profiles[-1479311724257856983].flatten().tolist()), key=lambda x: -x[1])[:20],
+#            columns=['token', 'relevance'])
     
 content_based_recommender_model = ContentBasedRecommender(articles_df)
 
 print('Evaluating Content-Based Filtering model...')
 cb_global_metrics, cb_detailed_results_df = model_evaluator.evaluate_model(content_based_recommender_model)
-print('\nGlobal metrics:\n%s' % cb_global_metrics)
-cb_detailed_results_df.head(10)
+#print('\nGlobal metrics:\n%s' % cb_global_metrics)
+#cb_detailed_results_df.head(10)
 
 #Creating a sparse pivot table with users in rows and items in columns
 users_items_pivot_matrix_df = interactions_train_df.pivot(index='personId', 
                                                           columns='contentId', 
                                                           values='eventStrength').fillna(0)
 
-users_items_pivot_matrix_df.head(10)
+#users_items_pivot_matrix_df.head(10)
 
 users_items_pivot_matrix = users_items_pivot_matrix_df.values
-users_items_pivot_matrix[:10]
+#users_items_pivot_matrix[:10]
 
 users_ids = list(users_items_pivot_matrix_df.index)
-users_ids[:10]
+#users_ids[:10]
 
 users_items_pivot_sparse_matrix = csr_matrix(users_items_pivot_matrix)
-users_items_pivot_sparse_matrix
+#users_items_pivot_sparse_matrix
 
 #The number of factors to factor the user-item matrix.
 NUMBER_OF_FACTORS_MF = 15
 #Performs matrix factorization of the original user item matrix
-#U, sigma, Vt = svds(users_items_pivot_matrix, k = NUMBER_OF_FACTORS_MF)
 U, sigma, Vt = svds(users_items_pivot_sparse_matrix, k = NUMBER_OF_FACTORS_MF)
 
-U.shape
-
-Vt.shape
+#U.shape
+#Vt.shape
 
 sigma = np.diag(sigma)
-sigma.shape
+#sigma.shape
 
 all_user_predicted_ratings = np.dot(np.dot(U, sigma), Vt) 
-all_user_predicted_ratings
+#all_user_predicted_ratings
 
 all_user_predicted_ratings_norm = (all_user_predicted_ratings - all_user_predicted_ratings.min()) / (all_user_predicted_ratings.max() - all_user_predicted_ratings.min())
 
 #Converting the reconstructed matrix back to a Pandas dataframe
 cf_preds_df = pd.DataFrame(all_user_predicted_ratings_norm, columns = users_items_pivot_matrix_df.columns, index=users_ids).transpose()
-cf_preds_df.head(10)
+#cf_preds_df.head(10)
 
-len(cf_preds_df.columns)
+#len(cf_preds_df.columns)
     
 cf_recommender_model = CFRecommender(cf_preds_df, articles_df)
 
 print('Evaluating Collaborative Filtering (SVD Matrix Factorization) model...')
 cf_global_metrics, cf_detailed_results_df = model_evaluator.evaluate_model(cf_recommender_model)
-print('\nGlobal metrics:\n%s' % cf_global_metrics)
-print(cf_detailed_results_df.head(10))
+#print('\nGlobal metrics:\n%s' % cf_global_metrics)
+#print(cf_detailed_results_df.head(10))
     
 hybrid_recommender_model = HybridRecommender(content_based_recommender_model, cf_recommender_model, articles_df,
                                              cb_ensemble_weight=1.0, cf_ensemble_weight=100.0)
@@ -454,6 +454,6 @@ def inspect_interactions(person_id, test_set=True):
                                                                           'contentId',
                                                                           'title', 'link']]
 
-print(inspect_interactions(-1479311724257856983, test_set=False).head(10))
+print(inspect_interactions(user_id, test_set=False).head(10))
 
-print(hybrid_recommender_model.recommend_items(-1479311724257856983, topn=20, verbose=True))
+print(hybrid_recommender_model.recommend_items(user_id, topn=20, verbose=True))
